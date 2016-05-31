@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const merge = require('webpack-merge');
 const webpack = require('webpack');
 const NpmInstallPlugin = require('npm-install-webpack-plugin');
@@ -6,10 +7,45 @@ const NpmInstallPlugin = require('npm-install-webpack-plugin');
 const TARGET = process.env.npm_lifecycle_event;
 const PATHS = {
   app: path.join(__dirname, 'app'),
-  build: path.join(__dirname, 'build')
+  build: path.join(__dirname, 'build'),
+  server: path.join(__dirname, 'server'),
 };
 
 process.env.BABEL_ENV = TARGET;
+
+const nodeModules = {};
+
+// note the path.resolve(__dirname, ...) part
+// without it, eslint-import-resolver-webpack fails
+// since eslint might be invoked with different cwd
+fs.readdirSync(path.resolve(__dirname, 'node_modules'))
+    .filter(x => ['.bin'].indexOf(x) === -1)
+    .forEach(mod => { nodeModules[mod] = `commonjs ${mod}`; });
+
+const server = {
+  target: 'node',
+  entry: {
+    server: PATHS.server
+  },
+  output: {
+    path: PATHS.build,
+    filename: 'server.bundle.js'
+  },
+  externals: nodeModules,
+  module: {
+    loaders: [
+      {
+        test: /\.js?$/,
+        loader: 'babel',
+        cacheDirectory: true,
+        include: PATHS.server,
+        query: {
+          presets: ['es2015']
+        }
+      }
+    ]
+  }
+};
 
 const common = {
   // Entry accepts a path or an object of entries. We'll be using the
@@ -25,30 +61,36 @@ const common = {
   },
   output: {
     path: PATHS.build,
-    filename: 'bundle.js'
+    filename: 'app.bundle.js'
   },
   module: {
     loaders: [
       {
-        // Test expects a RegExp! Note the slashes!
-        test: /\.css$/,
-        loaders: ['style', 'css'],
-        // Include accepts either a path or an array of paths.
-        include: PATHS.app
+        test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
+        loader:"url?limit=10000&mimetype=application/font-woff"
       },
-
-      // Set up jsx. This accepts js too thanks to RegExp
+      {
+        test: /\.(ttf|eot|svg)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
+        loader: "file"
+      },
+      {
+        test: /\.scss$/,
+        loaders: ["style", "css", "sass"],
+        include: PATHS.app,
+      },
       {
         test: /\.jsx?$/,
-
-        // Enable caching for improved performance during development
-        // It uses default OS directory by default. If you need something
-        // more custom, pass a path to it. I.e., babel?cacheDirectory=<path>
-        loaders: ['babel?cacheDirectory'],
-
-        // Parse only app files! Without this it will go through entire project.
-        // In addition to being slow, that will most likely result in an error.
-        include: PATHS.app
+        loader: 'babel',
+        cacheDirectory: true,
+        include: PATHS.app,
+        query: {
+          presets: ['es2015','react'],
+          env: {
+            start: {
+              presets: ['react-hmre']
+            }
+          }
+        }
       }
     ]
   }
@@ -57,41 +99,47 @@ const common = {
 // Default configuration. We will return this if
 // Webpack is called outside of npm.
 if(TARGET === 'start' || !TARGET) {
-  module.exports = merge(common, {
-    devServer: {
-      devtool: 'eval-source-map',
-      contentBase: PATHS.build,
+  module.exports = [
+    server,
+    merge(common, {
+      devServer: {
+        devtool: 'eval-source-map',
+        contentBase: PATHS.build,
 
-      // Enable history API fallback so HTML5 History API based
-      // routing works. This is a good default that will come
-      // in handy in more complicated setups.
-      historyApiFallback: true,
-      hot: true,
-      inline: true,
-      progress: true,
+        // Enable history API fallback so HTML5 History API based
+        // routing works. This is a good default that will come
+        // in handy in more complicated setups.
+        historyApiFallback: true,
+        hot: true,
+        inline: true,
+        progress: true,
 
-      // Display only errors to reduce the amount of output.
-      stats: 'errors-only',
+        // Display only errors to reduce the amount of output.
+        stats: 'errors-only',
 
-      // Parse host and port from env so this is easy to customize.
-      //
-      // If you use Vagrant or Cloud9, set
-      // host: process.env.HOST || '0.0.0.0';
-      //
-      // 0.0.0.0 is available to all network devices unlike default
-      // localhost
-      host: process.env.HOST,
-      port: process.env.PORT
-    },
-    plugins: [
-      new webpack.HotModuleReplacementPlugin(),
-      new NpmInstallPlugin({
-        save: true // --save
-      })
-    ]
-  });
+        // Parse host and port from env so this is easy to customize.
+        //
+        // If you use Vagrant or Cloud9, set
+        // host: process.env.HOST || '0.0.0.0';
+        //
+        // 0.0.0.0 is available to all network devices unlike default
+        // localhost
+        host: process.env.HOST,
+        port: process.env.PORT
+      },
+      plugins: [
+        new webpack.HotModuleReplacementPlugin(),
+        new NpmInstallPlugin({
+          save: true // --save
+        })
+      ]
+    })
+  ];
 }
 
 if(TARGET === 'build') {
-  module.exports = merge(common, {});
+  module.exports = [
+    server,
+    merge(common, {})
+  ];
 }

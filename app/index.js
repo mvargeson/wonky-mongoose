@@ -1,6 +1,5 @@
 /* global document */
-//
-// import materialize from 'materialize-css/dist/css/materialize.css';
+import './assets/styles/app.scss';
 
 import React from 'react';
 import { render } from 'react-dom';
