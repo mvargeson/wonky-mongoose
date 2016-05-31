@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { join } from 'path';
+import { resolve } from 'path';
 
 const router = new Router();
 
 router.get('/', (req, res) => {
-  res.sendFile(join(__dirname, '../views/index.html'));
+  res.sendFile('/Users/mvargeson/projects/wonky-mongoose/src/server/views/index.html');
 });
 
 export default router;
