@@ -8,12 +8,13 @@ import { Provider } from 'react-redux';
 import thunk from 'redux-thunk';
 import { createStore, combineReducers, applyMiddleware } from 'redux';
 import { syncHistoryWithStore, routerReducer } from 'react-router-redux';
+import { reducer as form } from 'redux-form';
 import * as reducers from './reducers';
 
 // application components
 import App from './components/App';
 import Splash from './components/Splash';
-import CreateAccount from './components/CreateAccount';
+import CreateAccountForm from './components/CreateAccountForm';
 import SignIn from './containers/SignIn';
 import SignOut from './containers/SignOut';
 import Profile from './containers/Profile';
@@ -26,7 +27,7 @@ import { DEBUG } from './config';
 
 reducers.routing = routerReducer;
 
-const store = createStore(combineReducers(reducers), applyMiddleware(thunk));
+const store = createStore(combineReducers({ form, ...reducers }), applyMiddleware(thunk));
 const history = syncHistoryWithStore(browserHistory, store);
 
 render(
@@ -34,7 +35,7 @@ render(
     <Router history={history}>
       <Route path="/" component={App}>
         <IndexRoute component={Splash} />
-        <Route path="/create-account" component={CreateAccount} />
+        <Route path="/create-account" component={CreateAccountForm} />
         <Route path="/sign-in" component={SignIn} />
         <Route path="/sign-out" component={SignOut} />
         <Route path="/profile" component={Profile} />
